@@ -83,7 +83,9 @@ class Parsing(object):
         with open(self.args.ini, 'w') as openini:
             openini.write(dedent('''\
                 # Centreon .ini template, for environment orchestration.
-                # Clone each object based on it's type.
+                # Create a new object by cloning an object based on it's type.
+                # Every field is optional, except it's '[name]' and 'type ='. All values will be fetch in the default section.
+                # If there's no default section, or it is commented out, the default values are set by the program.
 
                 #Default program configurations
                 [default] 
@@ -91,19 +93,19 @@ class Parsing(object):
 
                 [hostname]
                 type = host
-                #action = add # Uses the default 'host_action' if omitted
-                #alias = Host Name # Uses the default 'host_alias' if omitted
-                #ip = 10.1.20.1 # Uses the default 'host_ip' if omitted
-                #template = templatename # Uses the default 'host_template' if omitted
-                #group = hostgroupname # Uses the default 'host_group' if omitted
+                #action = add # add, edit, delete
+                #alias = Host Name
+                #ip = 10.1.20.1
+                #template = templatename
+                #group = hostgroupname
                 #resource = aclresourcename
-                #poller = mypoller # Uses the default 'host_poller' if omitted
+                #poller = mypoller
                 #snmp_community = 1ft4Ko9uqdt8U
                 #snmp_version = 2c
 
                 [hostgroupname]
                 type = hostgroup
-                #action = add # Uses the default 'hostgroup_action' if omitted
+                #action = add
                 #alias = Hostgroup Name
                 #service = servicename
                 #resource = aclresourcename
@@ -113,7 +115,7 @@ class Parsing(object):
                 #action = add
                 #alias = Service Name
                 #template = templatename
-                #check_command = check-host-alive # check_host_alive = yes
+                #check_command = check-host-alive
 
                 [aclresourcename]
                 type = resource
@@ -121,7 +123,7 @@ class Parsing(object):
 
                 [pollername]
                 type = poller
-                #action = restart''').format(default))
+                #action = restart # Unique action''').format(default))
 
 
     def Configuration(self):
@@ -165,7 +167,7 @@ class Orchestrate(object):
 
         self.user, self.objects = user, objects
 
-        #self.Authenticate()
+        self.Authenticate()
 
         for objtype in ['service', 'hostgroup', 'host', 'resource', 'poller']:
             for obj in self.objects[objtype]:
