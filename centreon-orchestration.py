@@ -4,6 +4,9 @@ __author__ = "Frederico Martins"
 __license__ = "GPLv3"
 __version__ = 0.1
 
+# Orchestrate a new environment for Centreon, based on a .ini file parsing. Currently only developed the action add,
+# for hosts/hostgroups/services and edit for ACL resources.
+
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from configparser import ConfigParser, MissingSectionHeaderError
 from getpass import getpass
