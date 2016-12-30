@@ -105,7 +105,7 @@ class Parsing(object):
                 type = hostgroup
                 #action = add # Uses the default 'hostgroup_action' if omitted
                 #alias = Hostgroup Name
-                #service = name;template
+                #service = servicename
                 #resource = aclresourcename
 
                 [servicename]
@@ -167,21 +167,13 @@ class Orchestrate(object):
 
         #self.Authenticate()
 
-        #for each in ['service', 'hostgroup', 'host']:
-        for service in self.objects['service']:
-            self.Service(service)
+        for objtype in ['service', 'hostgroup', 'host', 'resource', 'poller']:
+            for obj in self.objects[objtype]:
+                name = str(obj).partition(': ')[2][:-1]
+                obj = Assert(obj)
 
-        self.CreateGroup()
-
-        # New
-        #for host in self.objects['host']:
-            #self.Host(host)
-
-        for host, ip in pool.items():
-            self.CreateHost(host, ip)
-
-        self.RestartPoller()
-
+                print("Action: {0} {1} '{2}'".format(obj['action'].capitalize(), objtype, name))
+                getattr(self, objtype.capitalize())(name, obj)
 
     def Authenticate(self):
 
@@ -193,56 +185,50 @@ class Orchestrate(object):
             print("Wrong username or password.")
             self.Authenticate()
 
-
-    def Service(self, service):
-
-        service = Assert(service)
-        name = str(service).partition(': ')[2][:-1]
+    def Service(self, name, service):
 
         if service['action'] == 'add':
             self.Command('-o STPL -a add -v "{0};{1};{2}"'.format(name, service['alias'], service['template']))
+            if 'check_command' in service:
+                self.Command('-o STPL -a setparam -v "{0};check_command;{1}"'.format(name, service['check_command']))
 
-        
-#    def CreateService(self):
+        # Create new entries for possible configurations
 
-        #self.Command('-o STPL -a add -v "{0};VMWare_Host_Alive;GSS-SAS-Generico"'.format(self.service))
-        #self.Command('-o STPL -a setparam -v "{0};check_command;check-host-alive"'.format(self.service))
+    def Hostgroup(self, name, hostgroup):
 
+        if hostgroup['action'] == 'add':
+            self.Command('-o HG -a add -v "{0};{1}"'.format(name, hostgroup['alias']))
+            if 'service' in hostgroup:
+                self.Command('-o HGSERVICE -a add -v "{0};{1};{1}"'.format(name, hostgroup['service']))
+            if 'resource' in hostgroup:
+                self.Command('-o ACLRESOURCE -a grant_hostgroup -v "{0};{1}"'.format(self.resource, self.group))
 
-    def CreateGroup(self):
+        # Create new entries for possible configurations
 
-        print("Creating hostgroup {0} and granting ACL Resource {1} access".format(self.group, self.resource))
+    def Host(self, name, host):
 
-        self.Command('-o HG -a add -v "{0};VMWare Physical Servers"'.format(self.group))
-        self.Command('-o HGSERVICE -a add -v "{0};host-alive;{1}"'.format(self.group, self.service))
+        if host['action'] == 'add':
+            self.Command('-o HOST -a ADD -v "{0};{1};{2};{3};{4};{5}"'.format(name, host['alias'], host['ip'], host['template'],
+                host['poller'], host['group']))
+            self.Command('-o HOST -a setparam -v "{0};snmp_community;1ft4Ko9uqdt8U"'.format(name))
+            self.Command('-o HOST -a setparam -v "{0};snmp_version;2c"'.format(name))
+            if 'resource' in host:
+                self.Command('-o ACLRESOURCE -a grant_host -v "{0};{1}"'.format(host['resource'], name))
 
-        self.Command('-o ACLRESOURCE -a grant_hostgroup -v "{0};{1}"'.format(self.resource, self.group))
+        # Create new entries for possible configurations
 
-
-    def CreateHost(self, host, ip):
-
-        print("Creating host {0} and granting ACL Resource {1} access".format(host, self.resource))
-
-        location = 'Alfragide' if host[:4] == 'alfr' else 'Boavista'
-        enclosure = host[4:6]
-        blade = host[6:8]
-
-        self.Command('-o HOST -a ADD -v "{0};{1} VMWare Server - Enclosure:{2} Blade:{3};{4};host-gsssas;{5};{6}"'.format(
-            host, location, enclosure, blade, ip, self.poller, self.group))
-        self.Command('-o HOST -a setparam -v "{0};snmp_community;1ft4Ko9uqdt8U"'.format(host))
-        self.Command('-o HOST -a setparam -v "{0};snmp_version;2c"'.format(host))
-
-        self.Command('-o ACLRESOURCE -a grant_host -v "{0};{1}"'.format(self.resource, host))
-
-
-    def RestartPoller(self):
-
-        print("Restarting poller {0} and reloading ACL configurations".format(self.poller))
+    def Resource(self, name, resource):
 
         self.Command('-o ACL -a reload')
 
-        self.Command('-a APPLYCFG -v "{0}"'.format(self.poller))
+        # Create new entries for possible configurations
 
+    def Poller(self, name, poller):
+
+        if poller['action'] == 'restart':
+            self.Command('-a APPLYCFG -v "{0}"'.format(self.poller))
+
+        # Create new entries for possible configurations
 
     def Command(self, command):
 
@@ -253,7 +239,7 @@ def Assert(object): # Asserts the default values, in case any attribute is not s
     
     for param in defaultconf:
         try:
-            if param.startswith('service'):
+            if param.startswith(object['type']):
                 type = param.partition('_')[2]
                 object[type] = object[type].split('#')[0].strip() # Remove comment from value 
 
