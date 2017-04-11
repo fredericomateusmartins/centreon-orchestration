@@ -35,7 +35,10 @@ default = dedent('''\
     resource_action = edit
     poller_action = restart''')
 
-defaultconf = {param.split(' = ')[0]:param.split(' = ')[1] for param in default.split('\n')}
+defaultconf = {}
+
+for param in default.split('\n'):
+    defaultconf[param.split(' = ')[0]] = param.split(' = ')[1]
 
 
 class Parsing(object):
