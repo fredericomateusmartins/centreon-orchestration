@@ -232,9 +232,12 @@ class Orchestrate(object):
         # Create new entries for possible configurations
 
     def Poller(self, name, poller):
+        
+        stdout, status = Popen('/usr/bin/centreon -u {0} -p {1} -a POLLERLIST | grep {2}'.format(self.user, self.password, self.poller), 
+                               shell=True, stdout=PIPE, stderr=PIPE).communicate()
 
         if poller['action'] == 'restart':
-            self.Command('-a APPLYCFG -v "{0}"'.format(self.poller))
+            self.Command('-a APPLYCFG -v "{0}"'.format(stdout[0]))
 
         # Create new entries for possible configurations
 
