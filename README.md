@@ -1,9 +1,80 @@
-# Centreon Orchestration
+# Centreon Orchestration <img src="http://permabit.com/web/wp-content/uploads/2011/12/Orchestration.png" align="right" height="261" width="261"/>
 Centreon Environment Orchestration
 
 ## Synopsis
 
-Centreon Orchestration is a Python program for RHEL-like operative systems, which it's main purpose is to automate host/hostgroup/acl/services creation, manage acl/poller/service and many others.
+The `centreon-orchestration` is intended to be used as a monitoring orchestrator, for easability in adding and editing Centreon objects.
+<br>
+<br>
+The `.ini` file consists of sections for each Centreon object, with parameters in each section for the API.
+<br>
+<br>
+<br>
+<br>
+<br>
+The program requires an `.ini` file as argument, in order to create or edit objects as needed.
+
+```shell
+python centreon-orchestration.py --ini playbooks/hostname.ini --user username
+```
+
+There can also be generated a default `.ini` file:
+
+```shell
+python centreon-orchestration.py --ini playbooks/new_hostname.ini --generate-ini
+```
+
+Or generate a `.ini` file based on a host current configuration:
+
+```shell
+python centreon-orchestration.py --ini playbooks/clone_hostname.ini --user username --generate-ini --host hostname
+```
+
+Every parameter is optional inside the file sections, except it's '[name]' and 'type'. All values will be fetch in the default section.<br>
+_If there's no default section, or it is commented out, the default values are set by the program._<br>
+_The sections are parsed with the following order `command` > `hostgroup` > `service` > `host` > `resource` > `poller` regardless of their position in the file._
+_If another type is given, other than the one's previously shown, it will be ignored by the parser._
+
+```shell
+[machine_hostname]
+type = host
+action = add
+alias = New Host Description
+ip = 10.1.20.1
+template = centreon_host_template
+group = linux-servers|hostgroupname_test
+resource = resource_name
+poller = poller_name
+snmp_community = community_string
+snmp_version = snmp_version
+
+[hostgroupname_test]
+type = hostgroup
+action = add
+alias = New Test Hostgroup
+resource = resource_name
+
+[check_ping_test]
+type = command
+action = add
+line = $USER1$/check_ping -H $HOSTADDRESS$ -w 3000.0,80% -c 5000.0,100% -p 1
+
+[servicename_test]
+type = service
+action = add
+alias = New Test Service
+group = hostgroupname_test
+template = resource_name
+check_command = check_ping_test
+
+[resource_name]
+type = resource
+action = reload
+
+[poller_name]
+type = poller
+action = restart
+```
 
 ## Installation
 
@@ -15,16 +86,6 @@ Needed packages:
 - [ConfigParser](https://svn.python.org/projects/python/branches/release27-maint/Lib/ConfigParser.py)
 
 The program was tested to run only in RHEL-like distributions.
-
-## Contributions
-
-Please ensure your pull request adheres to the following guidelines:
-
-- Try to push clean and intuitive code only. 
-- Search previous suggestions before making a new one, as yours may be a duplicate.
-- Make an individual pull request for each suggestion.
-- Keep descriptions short and simple, but descriptive.
-- Check your spelling and grammar.
 
 ## License
 
