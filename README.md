@@ -10,8 +10,6 @@ The `.ini` file consists of sections for each Centreon object, with parameters i
 <br>
 <br>
 <br>
-<br>
-<br>
 The program requires an `.ini` file as argument, in order to create or edit objects as needed.
 
 ```shell
