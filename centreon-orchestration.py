@@ -2,17 +2,16 @@
 
 __author__ = "Frederico Martins"
 __license__ = "GPLv3"
-__version__ = 1
+__version__ = 1.1
 
-# Orchestrate a new environment for Centreon, based on a .ini file parsing. Currently only developed the action add,
-# for hosts/hostgroups/services and edit for ACL resources.
+# Orchestrate a new environment for Centreon, based on a .ini file parsing
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from os import path
+from signal import SIGINT, signal
 from textwrap import dedent
 
-from library.output import Handler
-from library.orchestration import Configuration, Orchestrate
+from library import Configuration, Handler, Orchestrate
 
 
 class Parsing(object):
@@ -42,6 +41,7 @@ class Parsing(object):
             default='admin')
         optional.add_argument('-f', '--force', action='store_true', help='Force provision to continue, even if error are encountered')
         optional.add_argument('-g', '--generate-ini', action='store_true', help='Generate .ini template configuration file')
+        optional.add_argument('-H', '--host', metavar='host', help='Generates .ini configuration file based on given host')
         optional.add_argument('-h', '--help', action='help', help='Show this help message')
         optional.add_argument('-v', '--version', action='version', version='{0} {1}'.format(self.name, __version__),
             help='Show program version')
@@ -49,40 +49,47 @@ class Parsing(object):
         self.args = parser.parse_args()
 
 
+def SignalHandler(signal, frame):
+    
+    try:
+        if hand.animation.isAlive():
+            hand.Stop()
+    except AttributeError:
+        print
+        
+    exit()
+    
+    
+signal(SIGINT, SignalHandler)
+
 hand = Handler()
 pars = Parsing()
 conf = Configuration(pars.args.ini)
 
-if pars.args.generate_ini:
-    try:
-        if not path.exists(conf.inifile) or raw_input("File {0} exists, overwrite? [y/N] ".format(conf.inifile)) == 'y':
-            conf.Generate()
-        
+if pars.args.generate_ini and not pars.args.host:
+    if not path.exists(conf.inifile) or raw_input("File {0} exists, overwrite? [y/N] ".format(conf.inifile)) == 'y':
+        conf.Generate()
         raise SystemExit
-
-    except KeyboardInterrupt:
-        raise SystemExit
-
-hand.Info('Parsing file {0}'.format(conf.inifile))
-conf.Apply()
 
 orch = Orchestrate()
 orch.user = pars.args.user
 orch.force = pars.args.force
-
 orch.Authenticate()
+
+if pars.args.generate_ini and pars.args.host:
+    if not path.exists(conf.inifile) or raw_input("File {0} exists, overwrite? [y/N] ".format(conf.inifile)) == 'y':
+        conf.Generate(pars.args.host, orch)
+        raise SystemExit
+
+conf.Apply()
 
 for types in conf.objects.keys():
     for objects in conf.objects[types]:
         name = str(objects).partition(': ')[2][:-1]
         objects = conf.Assert(objects)
 
-        try:
-            hand.Start('{0} {1} {2}'.format(objects['action'].capitalize(), types, name))
-            getattr(orch, types.capitalize())(name, objects)
-        except KeyboardInterrupt:
-            hand.Stop(None, proceed=orch.force)
-            exit()
+        hand.Start('{0} {1} {2}'.format(objects['action'].capitalize(), types, name))
+        getattr(orch, types.capitalize())(name, objects)
 
         for status in orch.status:
             if types == 'poller':
