@@ -7,9 +7,12 @@ __version__ = 1
 from collections import OrderedDict
 from configparser import RawConfigParser, MissingSectionHeaderError
 from getpass import getpass
+from json import dumps
+from requests import get, post
 from subprocess import PIPE, Popen
 from textwrap import dedent
 from time import sleep
+from types import MethodType
 from warnings import filterwarnings
 
 
@@ -93,6 +96,7 @@ class Configuration(object):
                     #group = hostgroupname
                     #template = templatename
                     #check_command = check-host-alive
+                    #check_command_arguments = !5000,20%!10000,60% 
     
                     [aclresourcename]
                     type = resource
@@ -130,7 +134,7 @@ class Configuration(object):
                     [{3}]
                     type = poller
                     action = restart
-                ''').format(obj['templates'], obj['hostgroups'], 'RESOURCE_NAME', obj['poller']))
+                ''').format(obj['templates'], obj['hostgroups'], 'GSS_SAS-Resources', obj['poller']))
 
     def Apply(self):
 
@@ -185,15 +189,29 @@ class Orchestrate(object):
     user = 'admin'
     force = False
     password = None
+    status = []
 
     def __init__(self):
 
         pass
 
+    def __getattribute__(self, attr):
+
+        method = object.__getattribute__(self, attr)
+
+        if type(method) is MethodType and method.__name__ is not 'Execute':
+            self.status = []
+
+        return method
+
     def Authenticate(self):
 
         if not self.password:
-            self.password = getpass()
+            try:
+                self.password = getpass()
+            except KeyboardInterrupt:
+                print(), exit(0)
+
         stdout, error = Popen('/usr/bin/centreon -u {0} -p {1}'.format(self.user, self.password),
             shell=True, stdout=PIPE, stderr=PIPE).communicate()
 
@@ -201,10 +219,16 @@ class Orchestrate(object):
             sleep(2); print("Wrong username or password.")
             self.password = None
             self.Authenticate()
+            
+    def Enable(self, host, service):
+    
+        self.Execute('-o SERVICE -a setparam -v "{0};{1};event_handler_enabled;1"'.format(host, service))
+            
+    def Disable(self, host, service):
+
+        self.Execute('-o SERVICE -a setparam -v "{0};{1};event_handler_enabled;0"'.format(host, service))
 
     def Hostgroup(self, name, hostgroup):
-
-        self.status = []
 
         if hostgroup['action'] == 'add':
             self.Execute('-o HG -a add -v "{0};{1}"'.format(name, hostgroup['alias']))
@@ -215,36 +239,37 @@ class Orchestrate(object):
 
     def Command(self, name, command):
 
-        self.status = []
-
         if command['action'] == 'add':
             self.Execute('-o CMD -a ADD -v \'{0};check;{1}\''.format(name, command['line']))
 
         # Create new entries for possible configurations
 
     def Service(self, name, service):
-
-        self.status = []
+        
+        if 'host' in service.keys():
+            action = 'SERVICE'
+            target = service['host']
+        else:
+            action = 'HGSERVICE'
+            target = service['group']
 
         if service['action'] == 'add':
-            self.Execute('-o HGSERVICE -a add -v "{0};{1};{2}"'.format(service['group'], name, service['template']))
+            self.Execute('-o {0} -a add -v "{1};{2};{3}"'.format(action, target, name, service['template']))
             if 'check_command' in service:
-                self.Execute('-o HGSERVICE -a setparam -v "{0};{1};check_command;{2}"'.format(service['group'], name, service['check_command']))
+                self.Execute('-o {0} -a setparam -v "{1};{2};check_command;{3}"'.format(action, target, name, service['check_command']))
                 if 'check_command_arguments' in service:
-                    self.Execute('-o HGSERVICE -a setparam -v "{0};{1};check_command_arguments;{2}"'.format(
-                        service['group'], name, service['check_command_arguments']))
+                    self.Execute('-o {0} -a setparam -v "{1};{2};check_command_arguments;{3}"'.format(action, 
+                        target, name, service['check_command_arguments']))
 
         # Create new entries for possible configurations
 
     def Host(self, name, host):
 
-        self.status = []
-
         if host['action'] == 'add':
-            self.Execute('-o HOST -a ADD -v "{0};{1};{2};{3};{4};{5}"'.format(name, host['alias'], host['ip'], host['template'],
-                host['poller'], host['group']))
-            self.Execute('-o HOST -a setparam -v "{0};snmp_community;{1}"'.format(name, host['snmp_community']))
-            self.Execute('-o HOST -a setparam -v "{0};snmp_version;{1}"'.format(name, host['snmp_version']))
+            self.Execute('-o HOST -a ADD -v "{0};{1};{2};{3};{4};{5}"'.format(name, host['alias'], host['ip'],
+                host['template'], host['poller'], host['group']))
+            self.Execute('-o HOST -a setparam -v "{0};snmp_community;1ft4Ko9uqdt8U"'.format(name))
+            self.Execute('-o HOST -a setparam -v "{0};snmp_version;2c"'.format(name))
             if 'resource' in host:
                 self.Execute('-o ACLRESOURCE -a grant_host -v "{0};{1}"'.format(host['resource'], name))
 
@@ -252,18 +277,14 @@ class Orchestrate(object):
 
     def Resource(self, name, resource):
 
-        self.status = []
-
         self.Execute('-o ACL -a reload')
 
         # Create new entries for possible configurations
 
     def Poller(self, name, poller):
-
-        self.status = []
         
-        stdout, status = Popen('/usr/bin/centreon -u {0} -p {1} -a POLLERLIST | grep {2}'.format(self.user, self.password, name), 
-                               shell=True, stdout=PIPE, stderr=PIPE).communicate()
+        stdout, status = Popen('/usr/bin/centreon -u {0} -p {1} -a POLLERLIST | grep {2}'.format(self.user, 
+            self.password, name), shell=True, stdout=PIPE, stderr=PIPE).communicate()
 
         if poller['action'] == 'restart':
             self.Execute('-a APPLYCFG -v "{0}"'.format(stdout[0]), True)
@@ -271,8 +292,7 @@ class Orchestrate(object):
         # Create new entries for possible configurations
 
     def Clone(self, host):
-        
-        self.status = []
+    
         objects = OrderedDict([('hostgroups', []), ('templates', []), ('poller', [])]) # Poller damages output, best if it is last
         
         self.Execute('-o HOST -a gethostgroup -v {0}'.format(host))
@@ -306,3 +326,150 @@ class Orchestrate(object):
             stdout, status = Popen('/usr/bin/centreon -u {0} -p {1} {2}'.format(self.user, self.password, command), shell=True, stdout=PIPE, stderr=PIPE).communicate()
 
         self.status.append([status, stdout.strip()])
+
+
+class ROrchestrate(Orchestrate):
+
+    def __init__(self, url):
+
+        self.url = url
+
+    def Authenticate(self):
+
+        if not self.password:
+            try:
+                self.password = getpass()
+            except KeyboardInterrupt:
+                print(), exit(0)
+
+        response = post('http://{0}/centreon/api/index.php?action=authenticate'.format(self.url), data=
+            {"username": self.user, "password": self.password})
+
+        try:
+            self.token = response.json()['authToken']
+        except (ValueError, TypeError):
+            sleep(2); print("Wrong username or password for user {0}.".format(self.user))
+            self.password = None
+            self.Authenticate()
+            
+    def Enable(self, host, service):
+        
+        self.Execute({"object": "service", "action": "setparam", "values": 
+            "{0};{1};event_handler_enabled;1".format(host, service)})
+            
+    def Disable(self, host, service):
+        
+        self.Execute({"object": "service", "action": "setparam", "values": 
+            "{0};{1};event_handler_enabled;0".format(host, service)})
+
+    def Hostgroup(self, name, hostgroup):
+
+        if hostgroup['action'] == 'add':
+            self.Execute({"object": "hg", "action": "add", "values": "{0};{1}".format(name, hostgroup['alias'])})
+            if 'resource' in hostgroup:
+                self.Execute({"object": "aclresource", "action": "grant_hostgroup", "values": "{0};{1}".format(
+                    hostgroup['resource'], name)})
+
+        # Create new entries for possible configurations
+
+    def Command(self, name, command):
+
+        if command['action'] == 'add':
+            self.Execute({"object": "cmd", "action": "add", "values": '{0};check;{1}'.format(name, command['line'])})
+
+        # Create new entries for possible configurations
+
+    def Service(self, name, service):
+        
+        if 'host' in service.keys():
+            action = "service"
+            target = service['host']
+        else:
+            action = "hgservice"
+            target = service['group']
+
+        if service['action'] == 'add':
+            self.Execute({"object": action, "action": "add", "values": "{0};{1};{2}".format(target, name,
+                service['template'])})
+            if 'check_command' in service:
+                self.Execute({"object": action, "action": "setparam", "values": "{0};{1};check_command;{2}".format(
+                    target, name, service['check_command'])})
+                if 'check_command_arguments' in service:
+                    self.Execute({"object": action, "action": "setparam", "values": "{0};{1};check_command_arguments;{2}".format(
+                        target, name, service['check_command_arguments'])})
+
+        # Create new entries for possible configurations
+
+    def Host(self, name, host):
+
+        if host['action'] == 'add':
+            self.Execute({"object": "host", "action": "add", "values": "{0};{1};{2};{3};{4};{5}".format(name, 
+                host['alias'], host['ip'], host['template'], host['poller'], host['group'])})
+            if 'resource' in host:
+                self.Execute({"object": "aclresource", "action": "grant_host", "values": "{0};{1}".format(
+                    host['resource'], name)})
+
+        # Create new entries for possible configurations
+
+    def Resource(self, name, resource):
+
+        self.Execute({"object": "acl", "action": "reload"})
+
+        # Create new entries for possible configurations
+
+    def Poller(self, name, poller):
+
+        self.Execute({"action": "pollerlist"})
+        for each in self.status[-1][1]:
+            if type(each) is dict and each['name'].lower() == name:
+                break
+
+        if poller['action'] == 'restart':
+            self.Execute({"action": "applycfg", "values": each['poller_id']})
+
+        # Create new entries for possible configurations
+
+    def Clone(self, host):
+        
+        objects = OrderedDict([('hostgroups', []), ('templates', []), ('poller', [])]) # Poller damages output, best if it is last
+        
+        self.Execute({"object": "host", "action": "gethostgroup", "values": host})
+        self.Execute({"object": "host", "action": "gettemplate", "values": host})
+        self.Execute({"action": "pollerlist"})
+        
+        for each, obj in zip(self.status, objects.keys()):
+            if not each[0]:
+                if obj == 'poller':
+                    for line in each[1].split('\n'):
+                        poller = line[1:].strip()
+                        self.Execute({"object": "instance", "action": "gethosts", "values": poller})
+
+                        if self.status[-1][1]:
+                            objects[obj].append(poller)
+                else:
+                    for line in each[1].split('\n')[1:]:
+                        objects[obj].append(line.split(';')[1])
+            else:
+                print('Error: {0}'.format(each[1]))
+                raise SystemExit
+                
+            objects[obj] = '|'.join(objects[obj])
+               
+        return objects
+        
+    def Execute(self, data):
+
+        api_string = 'http://{0}/centreon/api/index.php?action=action&object=centreon_clapi'.format(self.url)
+        response = post(api_string, data=dumps(data), headers={'content-type': 'application/json',
+            'centreon-auth-token': self.token})
+
+        try:
+            result = response.json()
+            if response.__dict__['status_code'] != 200:
+                raise RuntimeError
+        except ValueError:
+            self.status.append([1, response])
+        except RuntimeError:
+            self.status.append([1, result])
+        else:
+            self.status.append([0, result['result']])
