@@ -4,12 +4,9 @@ Centreon Environment Orchestration
 ## Synopsis
 
 The `centreon-orchestration` is intended to be used as a monitoring orchestrator, for easability in adding and editing Centreon objects.
-<br>
-<br>
+
 The `.ini` file consists of sections for each Centreon object, with parameters in each section for the API.
-<br>
-<br>
-<br>
+
 The program requires an `.ini` file as argument, in order to create or edit objects as needed.
 
 ```shell
