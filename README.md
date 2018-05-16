@@ -10,19 +10,19 @@ The `.ini` file consists of sections for each Centreon object, with parameters i
 The program requires an `.ini` file as argument, in order to create or edit objects as needed.
 
 ```shell
-python centreon-orchestration.py --ini playbooks/hostname.ini --user username
+centreon-orchestration --ini playbooks/hostname.ini --user username
 ```
 
 There can also be generated a default `.ini` file:
 
 ```shell
-python centreon-orchestration.py --ini playbooks/new_hostname.ini --generate-ini
+centreon-orchestration --ini playbooks/new_hostname.ini --generate-ini
 ```
 
 Or generate a `.ini` file based on a host current configuration:
 
 ```shell
-python centreon-orchestration.py --ini playbooks/clone_hostname.ini --user username --generate-ini --host hostname
+centreon-orchestration --ini playbooks/clone_hostname.ini --user username --generate-ini --host hostname
 ```
 
 Every parameter is optional inside the file sections, except it's '[name]' and 'type'. All values will be fetch in the default section.<br>
