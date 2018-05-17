@@ -79,6 +79,7 @@ Needed packages:
 - [Centreon](https://github.com/centreon/centreon)
 - [Python 2.6+](https://www.python.org/download/releases/2.6.6/)
 - [ConfigParser](https://svn.python.org/projects/python/branches/release27-maint/Lib/ConfigParser.py)
+- [Requests](https://github.com/requests/requests) (needed for REST calls)
 
 The program was tested to run only in RHEL-like distributions.
 
