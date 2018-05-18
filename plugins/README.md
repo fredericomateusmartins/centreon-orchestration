@@ -14,16 +14,6 @@ Needed packages: (according to each plugin)
 - NGINX or HTTPd (virtual_hosts)
 - cURL (soap_endpoint)
 
-## Contributions
-
-Please ensure your pull request adheres to the following guidelines:
-
-- Try to push clean and intuitive code only. 
-- Search previous suggestions before making a new one, as yours may be a duplicate.
-- Make an individual pull request for each suggestion.
-- Keep descriptions short and simple, but descriptive.
-- Check your spelling and grammar.
-
 ## License
 
 The content of this project and the source code is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html), the full license text can be seen [here](LICENSE).
