@@ -20,8 +20,8 @@ def Connect(hostname, port=443):
 for hostname in ('www.google.com', 'www.gitlab.com'):
     start = time()
     if Connect(hostname):
-        print("Connected to '{}' in {:.2f}s".format(hostname, time()-start))
+        print("Connected to '{0}' in {1:.2f}s | seconds={1}".format(hostname, time()-start))
         exit(status['ok'])
 else:
-    print("Unable to connect to any domain")
+    print("Unable to connect to any domain | seconds=0")
     exit(status['critical'])
