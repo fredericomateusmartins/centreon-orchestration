@@ -17,7 +17,7 @@ def Connect(hostname, port=443):
         return True
     return False
 
-for hostname in ('www.google.com', 'www.gitlab.com'):
+for hostname in ('www.google.com', 'www.wikipedia.org', 'www.github.com'):
     start = time()
     if Connect(hostname):
         print("Connected to '{0}' in {1:.2f}s | seconds={1}".format(hostname, time()-start))
