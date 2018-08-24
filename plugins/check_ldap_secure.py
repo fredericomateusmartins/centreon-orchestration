@@ -46,7 +46,7 @@ class Parsing(object):
 
 class Run(object):
     
-    def __init(self, args):
+    def __init__(self, args):
 
         timestart = time()
         ldapsearch = popen('env LDAPTLS_CACERT=%s ldapsearch -x -H ldaps://%s -b %s -D %s -w %s -s one' % (args.cert, args.host, args.base, args.user, args.password))
