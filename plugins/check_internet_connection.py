@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 from socket import create_connection, gethostbyname
 from time import time
