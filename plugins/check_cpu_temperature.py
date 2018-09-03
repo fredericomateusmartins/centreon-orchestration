@@ -56,7 +56,7 @@ class Check(object):
 
         for device, temperature in zip(stdout[n:n*2], stdout[n*2:]):
              device, temperature = device.split(':')[-1].strip(), int(temperature.split(':')[-1].strip()[:2])
-             output['perfdata'] += '"{0}"={1} '.format(device, temperature)
+             output['perfdata'] += '"{0}"={1} '.format(device.replace(' ', '_'), temperature)
              output['text'].append('{0}: {1} ºC'.format(device, temperature))
 
              if temperature >= args.critical:
