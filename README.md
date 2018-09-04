@@ -1,4 +1,4 @@
-# Centreon Orchestration <img src="http://permabit.com/web/wp-content/uploads/2011/12/Orchestration.png" align="right" height="261" width="261"/>
+# Centreon Orchestration <img src="http://www.patriot.ma/Images/orchestration-pic.png" align="right" height="261" width="261"/>
 Centreon Environment Orchestration
 
 ## Synopsis
