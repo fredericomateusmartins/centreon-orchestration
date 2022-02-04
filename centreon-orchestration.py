@@ -33,7 +33,7 @@ class Parsing(object):
                   Centreon task
                   automation.
                 '''), epilog = dedent('''\
-                Check the git repository at https://github.com/flippym/centreon-orchestration,
+                Check the git repository at https://github.com/fredericomateusmartins/centreon-orchestration,
                 for more information about usage, documentation and bug report.'''))
 
         optional = parser.add_argument_group('Optional')
