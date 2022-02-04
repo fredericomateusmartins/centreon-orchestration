@@ -28,7 +28,7 @@ class Parsing(object):
                   SOAP UI endpoint
                   check.
                 '''), epilog = dedent('''\
-                Check the git repository at https://github.com/flippym/nagios-collection,
+                Check the git repository at https://github.com/fredericomateusmartins/nagios-collection,
                 for more information about usage, documentation and bug report.'''))
 
         optional = parser.add_argument_group('Optional')
