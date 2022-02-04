@@ -27,7 +27,7 @@ class Parsing(object):
                   LDAPS certificate
                   check.
                 '''), epilog = dedent('''\
-                Check the git repository at https://github.com/flippym/nagios-collection,
+                Check the git repository at https://github.com/fredericomateusmartins/nagios-collection,
                 for more information about usage, documentation and bug report.'''))
 
         optional.add_argument('-f', '--fqdn', dest='host', type=str, required=True, help='LDAP Server FQDN')
